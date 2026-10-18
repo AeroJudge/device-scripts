@@ -127,10 +127,10 @@ Fresh setup writes settings directly to:
 The old flow used `/boot/settings.json`; do not use that location for current
 fresh-device setup.
 
-Setup currently prompts for `seasonYear` even though release tags now encode the
-season year as `vYY.MAJOR.MINOR`. A future approved setup/asset change should
-decide how to derive it from the release tag and validate it against
-figure-package metadata.
+Setup asks the builder for `seasonYear` and writes that value to
+`/var/opt/judge/settings.json`. The app release version does not select the
+figure season. Future figure-package selection and validation are separate work
+and are not part of this scripts migration.
 
 ## Version Checks
 
