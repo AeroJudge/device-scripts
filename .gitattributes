@@ -1,0 +1,22 @@
+# Maintain this file identically across all four repositories:
+# aerojudge-device-app, device-scripts, device-figures-pkg, device-volume-svc.
+# Apply shared policy changes to all four repositories together.
+
+# Use LF for text files on every platform.
+* text=auto eol=lf
+
+# Windows command scripts use CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Preserve binary assets without line-ending conversion.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.mp3 binary
+*.zip binary
+*.jar binary
+*.pdf binary
