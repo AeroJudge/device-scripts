@@ -1,17 +1,20 @@
 # AeroJudge Device SD Card Setup
 
-> Migration status (2026-10-18): this repository is being published for testing.
-> Raspberry Pi validation is outstanding. App-repository forwarding remains on
-> a separate branch; current base-image launchers still use the existing app path.
-> To test this repository now, explicitly fetch its launcher as shown below.
+This repository maintains device setup, update and recovery scripts, boot config
+profiles and wallpaper. The app repository retains compatibility entry points
+for existing base images and installed devices.
 
 These instructions are for current AeroJudge Device hardware:
 
-- serial numbers above `DPG-110`
+- serial numbers `DPG-110` and above
 - PCB revision `3.61`
 - Raspberry Pi 4B
 
 The supported installation path uses the prepared AeroJudge base image.
+
+Migration validation on DPG-110 covered fresh setup, judging hardware, updates,
+rollback, reset, old entry points and download failures. Legacy setup has isolated
+test coverage; legacy hardware validation is deferred.
 
 ## Install a Device
 
