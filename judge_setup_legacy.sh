@@ -268,7 +268,7 @@ sudo systemctl enable kiosk.service				    		> /dev/null 2>&1
 sudo ln -s /boot/settings.json /var/opt/judge/settings.json	> /dev/null 2>&1
 
 echo -e "${Yellow}Creating Default Pilots for Testing..."
-wget -O /tmp/data.zip "$RAW_BASE_URL/scripts/data.zip"						    > /dev/null 2>&1
+wget -O /tmp/data.zip "$SCRIPTS_RAW_BASE_URL/assets/legacy/data.zip"						    > /dev/null 2>&1
 unzip -o /tmp/data.zip -d /var/opt/judge/
 
 /home/judge/fetch_update.sh

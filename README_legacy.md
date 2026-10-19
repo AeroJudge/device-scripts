@@ -215,7 +215,24 @@ _Note: The < > brackets are not part of the file - they only indicate these are 
 	\#define KEY_0			11
 	```
 	<br>
-17. Install the Judging software. The prerequisite to this, you would have needed to download and copied all the files from the scripts folder in the repo to /home/judge on the pi
+17. Download the four app service/launcher files from `aerojudge-device-app`
+    and the updater from `device-scripts` into `/home/judge`:
+
+    ```sh
+    cd /home/judge
+    (
+      set -e
+      app_source=https://raw.githubusercontent.com/AeroJudge/aerojudge-device-app/main/scripts
+      scripts_source=https://raw.githubusercontent.com/AeroJudge/device-scripts/main
+
+      for file in judge.sh judge.service kiosk.sh kiosk.service; do
+        curl -fsSL "$app_source/$file" -o "$file"
+      done
+      curl -fsSL "$scripts_source/judge_update.sh" -o judge_update.sh
+    )
+    ```
+
+    Continue only if all five downloads succeed. Install the judging software:
     ```
 
 	sudo mkdir /var/opt/judge

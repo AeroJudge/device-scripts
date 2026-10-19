@@ -276,7 +276,6 @@ install_runtime_files() {
     download "$RAW_BASE_URL/scripts/kiosk.sh" "$tmp_dir/kiosk.sh"
     download "$SCRIPTS_RAW_BASE_URL/fetch_update.sh" "$tmp_dir/fetch_update.sh"
     download "$SCRIPTS_RAW_BASE_URL/assets/ajdesktop.png" "$tmp_dir/ajdesktop.png"
-    download "$RAW_BASE_URL/scripts/settings_readme.md" "$tmp_dir/settings_readme.md"
 
     sudo install -m 0644 "$tmp_dir/judge.service" /lib/systemd/system/judge.service
     install -m 0755 "$tmp_dir/judge.sh" "$BIN_DIR/judge.sh"
@@ -284,7 +283,6 @@ install_runtime_files() {
     install -m 0755 "$tmp_dir/kiosk.sh" "$BIN_DIR/kiosk.sh"
     install -m 0755 "$tmp_dir/fetch_update.sh" /home/judge/fetch_update.sh
     install -m 0644 "$tmp_dir/ajdesktop.png" /home/judge/ajdesktop.png
-    install -m 0644 "$tmp_dir/settings_readme.md" "$INSTALL_DIR/settings_readme.md"
     hide_desktop_wastebasket
 
     sudo systemctl daemon-reload
