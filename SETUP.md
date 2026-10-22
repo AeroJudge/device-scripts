@@ -132,9 +132,12 @@ Recover by reimaging; do not bypass the fresh-install guards.
 |---|---|---|
 | `AEROJUDGE_SCRIPTS_RAW_BASE_URL` | `https://raw.githubusercontent.com/AeroJudge/device-scripts/main` | Setup/maintenance scripts, config profiles, wallpaper, legacy test data |
 | `AEROJUDGE_RAW_BASE_URL` | `https://raw.githubusercontent.com/AeroJudge/aerojudge-device-app/main` | App and kiosk units/launchers |
-| `AEROJUDGE_RELEASE_API_URL` | `https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest` | App release assets |
+| `AEROJUDGE_APP_RELEASE_API_URL` | `https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest` | `judge.jar` and the update trigger tag |
+| `AEROJUDGE_FIGURES_RELEASE_API_URL` | `https://api.github.com/repos/AeroJudge/device-figures-pkg/releases/latest` | `figures.zip` |
+| `AEROJUDGE_VOLUME_RELEASE_API_URL` | `https://api.github.com/repos/AeroJudge/device-volume-svc/releases/latest` | `volume_service.zip` |
 
-The app release supplies `judge.jar`, `figures.zip`, and `volume_service.zip`.
+The app release supplies `judge.jar`; the figures and volume package releases
+supply `figures.zip` and `volume_service.zip`.
 Release tags use `vYY.MAJOR.MINOR`, for example `v26.1.0`.
 
 ## Testing alternate sources
@@ -152,8 +155,10 @@ Set any optional app-source or release overrides **before running the launcher**
 export AEROJUDGE_RAW_BASE_URL="https://raw.githubusercontent.com/<owner>/aerojudge-device-app/refs/heads/<branch>"
 
 # Optional: release assets from another repository
-export AEROJUDGE_RELEASE_API_URL="https://api.github.com/repos/<owner>/<repo>/releases/latest"
+export AEROJUDGE_APP_RELEASE_API_URL="https://api.github.com/repos/<owner>/<repo>/releases/latest"
 ```
+
+The figures and volume release settings take the same URL form.
 
 To test a scripts branch, fetch and run its launcher:
 

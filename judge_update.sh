@@ -2,7 +2,7 @@
 # =============================================================================
 # judge_update.sh - AeroJudge Update Script
 # =============================================================================
-# This script checks for and installs updates from GitHub releases.
+# Checks the app release feed for a new version and installs judge.jar, figures.zip and volume_service.zip from their own release feeds.
 # It is fetched and executed by fetch_update.sh on the device.
 #
 # Modes:
@@ -25,7 +25,9 @@ HEALTH_RETRIES=30
 HEALTH_INTERVAL=5
 VERSION_FILE="/home/judge/.judge_last_release"
 MODE="$1"
-RELEASE_API_URL="${AEROJUDGE_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest}"
+APP_RELEASE_API_URL="${AEROJUDGE_APP_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest}"
+FIGURES_RELEASE_API_URL="${AEROJUDGE_FIGURES_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-figures-pkg/releases/latest}"
+VOLUME_RELEASE_API_URL="${AEROJUDGE_VOLUME_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-volume-svc/releases/latest}"
 STABLE_TAG_PATTERN='^v[0-9]{2}\.[0-9]+\.[0-9]+$'
 
 # ---- Shared functions -------------------------------------------------------
@@ -62,6 +64,32 @@ compare_versions() {
     return "$result"
 }
 
+# Download one named asset from a release feed (GitHub releases API JSON)
+# into the staging directory. Fails visibly when the asset is not listed or
+# the download does not complete; the caller cleans staging.
+download_release_asset() {
+    feed_json=$1
+    asset_name=$2
+
+    asset_url=$(echo "$feed_json" | grep -oP '"browser_download_url": "[^"]*/'"$asset_name"'"' | head -n 1 | cut -d' ' -f2 | tr -d '"')
+    if [ -z "$asset_url" ]; then
+        echo "Asset $asset_name is not listed in the release feed!" >&2
+        return 1
+    fi
+
+    echo "Downloading asset: $asset_url"
+    curl --silent --fail -L -o "$STAGING_DIR/$asset_name" "$asset_url"
+    if [ $? -ne 0 ]; then
+        echo "Error fetching asset: $asset_url" >&2
+        return 1
+    fi
+}
+
+# Read the version from an installed package.json without jq.
+package_version() {
+    grep -o '"version": *"[^"]*"' "$1" 2>/dev/null | head -n 1 | cut -d'"' -f4
+}
+
 ensure_judge_dir() {
     if [ ! -d "$INSTALL_DIR" ]; then
         echo "Creating judge folder..."
@@ -90,6 +118,7 @@ check_volume_service() {
             sudo chown judge:judge /var/opt/volume_service
             unzip -quoj "$VZIP" -d /var/opt/volume_service/
             rm -f "$VZIP"
+            echo "Installed volume service package $(package_version /var/opt/volume_service/package.json)"
 
             [ -s /var/opt/volume_service/audio_hardware.sh ] || {
                 echo "Audio hardware helper is missing from volume_service.zip" >&2
@@ -123,7 +152,7 @@ check_volume_service() {
             sudo systemctl enable audio-hardware.service volume.service
             echo "Audio services enabled; they will start after the required reboot."
         else
-            echo "Latest release does not include the PCB 3.61+ audio stack"
+            echo "No volume_service.zip staged; audio stack not installed"
         fi
     fi
 }
@@ -151,9 +180,9 @@ do_download() {
 
     last_release=$(cat "$VERSION_FILE")
 
-    latest_release=$(curl --silent --fail -G "$RELEASE_API_URL")
+    latest_release=$(curl --silent --fail -G "$APP_RELEASE_API_URL")
     if [ $? -ne 0 ]; then
-        echo "Error fetching latest release (no internet?)!" >&2
+        echo "Error fetching app release feed (no internet?)!" >&2
         return 1
     fi
 
@@ -188,28 +217,26 @@ do_download() {
         mkdir -p "$STAGING_DIR"
 
         echo "Downloading assets to $STAGING_DIR..."
-        assets_url=$(echo $latest_release | grep -oP '"assets_url": "(.*?)"' | cut -d' ' -f2 | tr -d [\"])
+
+        # Each component comes from its own release feed. One all-or-nothing
+        # download phase: any failure removes staging before anything installs.
+        download_release_asset "$latest_release" judge.jar || { rm -rf "$STAGING_DIR"; return 1; }
+
+        figures_release=$(curl --silent --fail -G "$FIGURES_RELEASE_API_URL")
         if [ $? -ne 0 ]; then
-            echo "Error parsing for assets url!" >&2
+            echo "Error fetching figures release feed (no internet?)!" >&2
+            rm -rf "$STAGING_DIR"
             return 1
         fi
+        download_release_asset "$figures_release" figures.zip || { rm -rf "$STAGING_DIR"; return 1; }
 
-        assets=$(curl --silent --fail -G $assets_url | grep download_url | tr -d [\"] | cut -d' ' -f6)
+        volume_release=$(curl --silent --fail -G "$VOLUME_RELEASE_API_URL")
         if [ $? -ne 0 ]; then
-            echo "Error fetching assets feed!" >&2
+            echo "Error fetching volume release feed (no internet?)!" >&2
+            rm -rf "$STAGING_DIR"
             return 1
         fi
-
-        for asset_url in $assets
-        do
-            echo "Downloading asset: $asset_url"
-            curl --silent --fail -L -o "$STAGING_DIR/$(basename $asset_url)" "$asset_url"
-            if [ $? -ne 0 ]; then
-                echo "Error fetching asset: $asset_url" >&2
-                rm -rf "$STAGING_DIR"
-                return 1
-            fi
-        done
+        download_release_asset "$volume_release" volume_service.zip || { rm -rf "$STAGING_DIR"; return 1; }
 
         # Write the target version to staging so the install phase knows it
         echo "$latest_tag" > "$STAGING_DIR/.target_version"
@@ -267,7 +294,7 @@ do_install() {
     if [ -f "$STAGING_DIR/figures.zip" ]; then
         rm -rf "$INSTALL_DIR/figures"
         unzip -qo "$STAGING_DIR/figures.zip" -d "$INSTALL_DIR"
-        echo "Installed figures version $TARGET_VERSION"
+        echo "Installed figures package $(package_version "$INSTALL_DIR/figures/package.json")"
     fi
 
     # Install the hardware-specific audio stack before cleaning up staging;

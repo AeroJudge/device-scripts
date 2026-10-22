@@ -8,14 +8,18 @@ set -Eeuo pipefail
 LOG_FILE="/home/judge/aerojudge-setup.log"
 SCRIPTS_RAW_BASE_URL="${AEROJUDGE_SCRIPTS_RAW_BASE_URL:-https://raw.githubusercontent.com/AeroJudge/device-scripts/main}"
 RAW_BASE_URL="${AEROJUDGE_RAW_BASE_URL:-https://raw.githubusercontent.com/AeroJudge/aerojudge-device-app/main}"
-RELEASE_API_URL="${AEROJUDGE_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest}"
+APP_RELEASE_API_URL="${AEROJUDGE_APP_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest}"
+FIGURES_RELEASE_API_URL="${AEROJUDGE_FIGURES_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-figures-pkg/releases/latest}"
+VOLUME_RELEASE_API_URL="${AEROJUDGE_VOLUME_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-volume-svc/releases/latest}"
 
 # Sources are independent: old base-image launchers export the app source.
 while [ "${SCRIPTS_RAW_BASE_URL%/}" != "$SCRIPTS_RAW_BASE_URL" ]; do SCRIPTS_RAW_BASE_URL=${SCRIPTS_RAW_BASE_URL%/}; done
 while [ "${RAW_BASE_URL%/}" != "$RAW_BASE_URL" ]; do RAW_BASE_URL=${RAW_BASE_URL%/}; done
 export AEROJUDGE_SCRIPTS_RAW_BASE_URL="$SCRIPTS_RAW_BASE_URL"
 export AEROJUDGE_RAW_BASE_URL="$RAW_BASE_URL"
-export AEROJUDGE_RELEASE_API_URL="$RELEASE_API_URL"
+export AEROJUDGE_APP_RELEASE_API_URL="$APP_RELEASE_API_URL"
+export AEROJUDGE_FIGURES_RELEASE_API_URL="$FIGURES_RELEASE_API_URL"
+export AEROJUDGE_VOLUME_RELEASE_API_URL="$VOLUME_RELEASE_API_URL"
 
 INSTALL_DIR="/var/opt/judge"
 BIN_DIR="$INSTALL_DIR/bin"
@@ -196,11 +200,15 @@ verify_network_access() {
     local config_url="$SCRIPTS_RAW_BASE_URL/config/profiles/pcb-3.61/config.txt"
 
     wget -q --spider "$config_url" || fail "Cannot reach setup config: $config_url"
-    wget -q --spider "$RELEASE_API_URL" || fail "Cannot reach release API: $RELEASE_API_URL"
+    wget -q --spider "$APP_RELEASE_API_URL" || fail "Cannot reach app release API: $APP_RELEASE_API_URL"
+    wget -q --spider "$FIGURES_RELEASE_API_URL" || fail "Cannot reach figures release API: $FIGURES_RELEASE_API_URL"
+    wget -q --spider "$VOLUME_RELEASE_API_URL" || fail "Cannot reach volume release API: $VOLUME_RELEASE_API_URL"
 
     echo "Scripts source: $SCRIPTS_RAW_BASE_URL"
     echo "App source: $RAW_BASE_URL"
-    echo "Release API URL: $RELEASE_API_URL"
+    echo "App release API URL: $APP_RELEASE_API_URL"
+    echo "Figures release API URL: $FIGURES_RELEASE_API_URL"
+    echo "Volume release API URL: $VOLUME_RELEASE_API_URL"
 }
 
 install_boot_config() {
