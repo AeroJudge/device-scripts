@@ -12,7 +12,9 @@ Legacy setup instructions are in [README_legacy.md](README_legacy.md).
 
 ## Repository ownership and compatibility
 
-Executable setup/maintenance scripts live at the repository root. Wallpaper lives
+Executable setup/maintenance scripts live at the repository root. `clock_setup.sh`
+applies the device clock policy and installs the `aerojudge-clock` helper built
+from `device_clock.py`. Wallpaper lives
 in `assets/`; legacy test data is in `assets/legacy/data.zip`.
 
 Configuration files are maintained in `config/profiles/`. These have specific options for each base hardware configuration.  

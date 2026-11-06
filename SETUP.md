@@ -94,6 +94,16 @@ pactl info | grep -E 'Server Name|Default Sink'
 journalctl -u audio-hardware.service -u volume.service -n 80 --no-pager
 ```
 
+Device clock and clock policy:
+
+```sh
+sudo aerojudge-clock status
+systemctl is-enabled systemd-timesyncd.service
+timedatectl show -p NTPSynchronized --value
+dpkg-query -W -f='${Status}\n' fake-hwclock
+timedatectl
+```
+
 The running version comes from the JAR manifest. The release marker records
 the last successfully installed release; it is separate from the running version.
 
@@ -118,6 +128,7 @@ unzip -p /var/opt/judge/bin/judge.jar META-INF/MANIFEST.MF | grep Implementation
 | Application and services | Installs release assets, `judge.service`, `kiosk.service`, and `fetch_update.sh`; installs and enables `audio-hardware.service` and `volume.service`. |
 | Hardware and desktop | Installs boot configuration and wallpaper, hides the Wastebasket, and disables PackageKit update prompts. |
 | Validation | Checks services, release/audio assets, runtime directories, and PCB 3.61+ boot configuration. |
+| Clock | Installs `aerojudge-clock` and its sudoers rule on every device. On RTC devices also disables `systemd-timesyncd`, marks the kernel clock unsynchronized, purges `fake-hwclock` and sets timezone UTC. Update replaces `fetch_update.sh`, which sets temporary system time from the update host when the RTC reports invalid; the RTC is not written and CLOCK stays red until Score sets it. |
 
 After collecting inputs, setup runs without further input until the reboot
 prompt. Successful validation removes `/home/judge/build_aerojudge.sh` and
@@ -125,6 +136,23 @@ prompt. Successful validation removes `/home/judge/build_aerojudge.sh` and
 
 Failed installation or validation leaves the entry scripts available.
 Recover by reimaging; do not bypass the fresh-install guards.
+
+### Clock policy recovery
+
+To return a device to automatic clock behavior:
+
+```sh
+sudo systemctl enable --now systemd-timesyncd.service
+sudo apt-get install -y fake-hwclock
+sudo rm -f /etc/sudoers.d/aerojudge-clock /usr/local/sbin/aerojudge-clock
+sudo timedatectl set-timezone <zone>
+```
+
+Re-enabling `systemd-timesyncd` restores automatic clock behavior and may
+subsequently copy NTP-derived system time into the RTC, so Score-only
+protection no longer holds on that device. To reapply the policy, download
+`clock_setup.sh` and `device_clock.py` from device-scripts into one directory
+and run `sudo clock_setup.sh --staged <dir>`.
 
 ## Download sources
 

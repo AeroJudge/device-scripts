@@ -1,8 +1,9 @@
-#!/bin/sh
+#!/bin/bash
 # =============================================================================
 # judge_update.sh - AeroJudge Update Script
 # =============================================================================
-# Checks the app release feed for a new version and installs judge.jar, figures.zip and volume_service.zip from their own release feeds.
+# Checks the app release feed for a new version and installs judge.jar, figures.zip and volume_service.zip from their own release feeds,
+# plus the device clock policy files (clock_setup.sh, device_clock.py) and fetch_update.sh from device-scripts.
 # It is fetched and executed by fetch_update.sh on the device.
 #
 # Modes:
@@ -28,6 +29,7 @@ MODE="$1"
 APP_RELEASE_API_URL="${AEROJUDGE_APP_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/aerojudge-device-app/releases/latest}"
 FIGURES_RELEASE_API_URL="${AEROJUDGE_FIGURES_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-figures-pkg/releases/latest}"
 VOLUME_RELEASE_API_URL="${AEROJUDGE_VOLUME_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-volume-svc/releases/latest}"
+SCRIPTS_RAW_BASE_URL="${AEROJUDGE_SCRIPTS_RAW_BASE_URL:-https://raw.githubusercontent.com/AeroJudge/device-scripts/main}"
 STABLE_TAG_PATTERN='^v[0-9]{2}\.[0-9]+\.[0-9]+$'
 
 # ---- Shared functions -------------------------------------------------------
@@ -157,6 +159,21 @@ check_volume_service() {
     fi
 }
 
+# Apply the clock helper and RTC clock policy from staged files. Idempotent;
+# a device without a supported RTC gets the helper only. Failure is a
+# warning: the app files are already installed and the service must start.
+# clock_setup.sh removes the helper on failure, so the app then reports the
+# clock as unavailable instead of trusting a half-applied policy.
+check_clock_policy() {
+    if [ ! -s "$STAGING_DIR/clock/clock_setup.sh" ] || [ ! -s "$STAGING_DIR/clock/device_clock.py" ]; then
+        echo "WARNING: clock policy scripts were not staged; skipping." >&2
+        return 0
+    fi
+    sudo bash "$STAGING_DIR/clock/clock_setup.sh" --staged "$STAGING_DIR/clock" \
+        || echo "WARNING: clock policy was not applied; rerun clock_setup.sh over SSH." >&2
+    return 0
+}
+
 # Check for xset in .bashrc (disables key repeat after reboot)
 check_xset() {
     if ! grep -q "xset r off" /home/judge/.bashrc; then
@@ -238,6 +255,18 @@ do_download() {
         fi
         download_release_asset "$volume_release" volume_service.zip || { rm -rf "$STAGING_DIR"; return 1; }
 
+        # Clock helper, policy script and update launcher come from
+        # device-scripts, not a release feed. Same all-or-nothing rule as the
+        # assets above.
+        mkdir -p "$STAGING_DIR/clock"
+        for clock_file in device_clock.py clock_setup.sh fetch_update.sh; do
+            curl --silent --fail -L -o "$STAGING_DIR/clock/$clock_file" "$SCRIPTS_RAW_BASE_URL/$clock_file" || {
+                echo "Error fetching $clock_file from device-scripts!" >&2
+                rm -rf "$STAGING_DIR"
+                return 1
+            }
+        done
+
         # Write the target version to staging so the install phase knows it
         echo "$latest_tag" > "$STAGING_DIR/.target_version"
 
@@ -300,6 +329,18 @@ do_install() {
     # Install the hardware-specific audio stack before cleaning up staging;
     # it reads volume_service.zip from the staging directory.
     check_volume_service || return 1
+
+    check_clock_policy
+
+    # Ship the update launcher with the clock policy. Its temporary update
+    # time step must be on the device before policy removes NTP, or a device
+    # that later loses RTC time could not update. install unlinks the old
+    # file first, so the copy running this update finishes unaffected.
+    if [ -s "$STAGING_DIR/clock/fetch_update.sh" ] && sh -n "$STAGING_DIR/clock/fetch_update.sh"; then
+        install -m 0755 "$STAGING_DIR/clock/fetch_update.sh" /home/judge/fetch_update.sh
+    else
+        echo "WARNING: update launcher was not staged or failed syntax check; existing launcher kept." >&2
+    fi
 
     echo "Starting services..."
     sudo systemctl start judge.service
