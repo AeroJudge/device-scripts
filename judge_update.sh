@@ -303,6 +303,11 @@ do_install() {
         return 1
     fi
 
+    # Empty marker means fresh setup's first install; a release tag means an
+    # existing device. Read it before the marker is rewritten below.
+    # Only used by the temporary cleanup below; remove together with it.
+    PREVIOUS_RELEASE=$(cat "$VERSION_FILE" 2>/dev/null)
+
     # Backup current JAR before touching anything
     BACKUP_CREATED=false
     if [ -f "$BIN_DIR/judge.jar" ]; then
@@ -365,6 +370,27 @@ do_install() {
         # would think it was already updated and never retry.
         echo "$TARGET_VERSION" > "$VERSION_FILE"
         echo "Version marker updated to $TARGET_VERSION"
+
+        # Temporary, shipped-device cleanup. Devices built before the current
+        # setup kept one-time setup tools in /home/judge; remove them after a
+        # successful update. Fresh setup is skipped: its marker is empty, and
+        # it removes its own entry scripts after validation. Failures warn and
+        # never fail the update. Remove this block and the PREVIOUS_RELEASE
+        # read above after the 2027 season update cycle: every device in
+        # service must take a 2027 release for that season's figures, and any
+        # release carrying this block cleans it. Per device, a release marker
+        # at or above the first release with this block confirms it ran.
+        if [ -n "$PREVIOUS_RELEASE" ]; then
+            for setup_file in device_identity.sh build_aerojudge.sh judge_setup.sh; do
+                if [ -e "/home/judge/$setup_file" ]; then
+                    if rm -f -- "/home/judge/$setup_file"; then
+                        echo "Removed one-time setup file /home/judge/$setup_file"
+                    else
+                        echo "WARNING: could not remove /home/judge/$setup_file" >&2
+                    fi
+                fi
+            done
+        fi
 
         # Clean up staging
         rm -rf "$STAGING_DIR"
