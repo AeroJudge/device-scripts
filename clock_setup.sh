@@ -22,6 +22,8 @@ set -Eeuo pipefail
 
 HELPER=/usr/local/sbin/aerojudge-clock
 SUDO_RULE=/etc/sudoers.d/aerojudge-clock
+GREEN='\033[0;32m'
+NC='\033[0m'
 STEP="preflight"
 HELPER_GATED=false   # true once the RTC check has run; failures then remove the helper
 RTC_PRESENT=false
@@ -81,6 +83,8 @@ if [ "$RTC_PRESENT" = true ]; then
     if [ "$(dpkg-query -W -f='${Status}' fake-hwclock 2>/dev/null || true)" = "install ok installed" ]; then
         systemctl disable --now fake-hwclock
         apt-get purge -y fake-hwclock
+        # apt's PackageKit hook reports the mask that setup applies; harmless.
+        echo -e "${GREEN}Note: a PackageKit 'UnitMasked' error from apt above is expected; setup masks PackageKit.${NC}"
     fi
 
     # timesyncd stays installed; it is only disabled.
