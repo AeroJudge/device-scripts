@@ -30,7 +30,7 @@ APP_RELEASE_API_URL="${AEROJUDGE_APP_RELEASE_API_URL:-https://api.github.com/rep
 FIGURES_RELEASE_API_URL="${AEROJUDGE_FIGURES_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-figures-pkg/releases/latest}"
 VOLUME_RELEASE_API_URL="${AEROJUDGE_VOLUME_RELEASE_API_URL:-https://api.github.com/repos/AeroJudge/device-volume-svc/releases/latest}"
 SCRIPTS_RAW_BASE_URL="${AEROJUDGE_SCRIPTS_RAW_BASE_URL:-https://raw.githubusercontent.com/AeroJudge/device-scripts/main}"
-STABLE_TAG_PATTERN='^v[0-9]{2}\.[0-9]+\.[0-9]+$'
+STABLE_TAG_PATTERN='^v[0-9]{2}\.[0-9]+(\.[0-9]+)?$'
 
 # ---- Shared functions -------------------------------------------------------
 
@@ -40,7 +40,7 @@ is_stable_release_tag() {
     echo "$1" | grep -Eq "$STABLE_TAG_PATTERN"
 }
 
-# Function to compare stable release tags in format vYY.MAJOR.MINOR
+# Compare vMAJOR.MINOR release tags with an optional legacy .PATCH component.
 # Returns: 0 if version1 > version2, 1 otherwise
 compare_versions() {
     local version1=$1
@@ -212,14 +212,14 @@ do_download() {
     # Refuse malformed latest tags before comparing or staging assets.
     if ! is_stable_release_tag "$latest_tag"; then
         echo "Invalid latest release tag: $latest_tag" >&2
-        echo "Expected stable release tag format: vYY.MAJOR.MINOR, for example v26.1.0" >&2
+        echo "Expected stable release tag format: vMAJOR.MINOR (or legacy vMAJOR.MINOR.PATCH), for example v26.3" >&2
         return 1
     fi
 
     # A malformed marker means the update state is not trustworthy.
     if [ -n "$last_release" ] && ! is_stable_release_tag "$last_release"; then
         echo "Invalid installed release marker in $VERSION_FILE: $last_release" >&2
-        echo "Expected stable release tag format: vYY.MAJOR.MINOR, for example v26.1.0" >&2
+        echo "Expected stable release tag format: vMAJOR.MINOR (or legacy vMAJOR.MINOR.PATCH), for example v26.3" >&2
         return 1
     fi
 
@@ -299,7 +299,7 @@ do_install() {
     # Install only a staged stable release tag written during download.
     if ! is_stable_release_tag "$TARGET_VERSION"; then
         echo "Invalid staged target release tag: $TARGET_VERSION" >&2
-        echo "Expected stable release tag format: vYY.MAJOR.MINOR, for example v26.1.0" >&2
+        echo "Expected stable release tag format: vMAJOR.MINOR (or legacy vMAJOR.MINOR.PATCH), for example v26.3" >&2
         return 1
     fi
 
