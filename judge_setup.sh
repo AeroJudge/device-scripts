@@ -404,6 +404,15 @@ validate_install() {
     systemctl is-enabled audio-hardware.service >/dev/null || fail "audio-hardware.service is not enabled."
     systemctl is-enabled volume.service >/dev/null || fail "volume.service is not enabled."
 
+    # Clock policy, applied by the update path in step 9. Setup targets PCB
+    # 3.61+ only, so an RTC is always present and the helper must say so.
+    [ -x /usr/local/sbin/aerojudge-clock ] || fail "Clock helper is missing or not executable."
+    [ -s /etc/sudoers.d/aerojudge-clock ] || fail "Clock sudoers rule is missing."
+    sudo visudo -cf /etc/sudoers.d/aerojudge-clock >/dev/null || fail "Clock sudoers rule failed validation."
+    [ "$(systemctl is-enabled systemd-timesyncd.service 2>/dev/null)" = disabled ] || fail "systemd-timesyncd is not disabled."
+    [ "$(dpkg-query -W -f='${Status}' fake-hwclock 2>/dev/null)" != "install ok installed" ] || fail "fake-hwclock is still installed."
+    case "$(sudo -n /usr/local/sbin/aerojudge-clock status)" in valid|invalid) ;; *) fail "Clock helper status check failed.";; esac
+
     echo "Install validation passed."
 }
 
@@ -434,6 +443,9 @@ finish() {
     echo "  raspi-gpio get 8"
     echo "  pactl info | grep -E 'Server Name|Default Sink'"
     echo "  journalctl -u audio-hardware.service -u volume.service -n 80 --no-pager"
+    echo
+    echo "Clock check after reboot:"
+    echo "  sudo aerojudge-clock status"
     echo
     echo "Board identity: $DEVICE_IDENTITY"
     echo "Settings file: $SETTINGS_FILE"
